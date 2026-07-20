@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  credits   Int      @default(5)
+  createdAt DateTime @default(now())
+
+  jobs SubtitleJob[]
+}
+
+model SubtitleJob {
+  id           String    @id @default(cuid())
+  userId       String
+  title        String
+  fileName     String
+  fileSize     Int
+  duration     Float?
+  language     String    @default("en")
+  translateTo  String?
+  status       JobStatus @default(PENDING)
+  progress     Int       @default(0)
+  audioUrl     String?
+  subtitles    Json?
+  srtContent   String?   @db.Text
+  vttContent   String?   @db.Text
+  errorMsg     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
