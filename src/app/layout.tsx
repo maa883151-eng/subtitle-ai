@@ -10,7 +10,16 @@ export const metadata: Metadata = {
   description: "Generate accurate subtitles from any video or audio file using OpenAI Whisper. Supports 90+ languages with automatic translation.",
 };
 
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  if (isDemo) {
+    return (
+      <html lang="en">
+        <body className={inter.className}>{children}</body>
+      </html>
+    );
+  }
   return (
     <ClerkProvider>
       <html lang="en">

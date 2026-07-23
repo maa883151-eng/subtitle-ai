@@ -1,10 +1,23 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 
+const DEMO_USER = { fullName: "Demo User", imageUrl: null as null | string, email: "demo@example.com" };
+
 export default async function SettingsPage() {
-  const { userId } = await auth();
-  const clerkUser = await currentUser();
-  const dbUser = await db.user.findUnique({ where: { clerkId: userId! } });
+  let userId: string;
+  let clerkUser: typeof DEMO_USER | null;
+
+  if (process.env.DEMO_MODE === "true") {
+    userId = "demo-user";
+    clerkUser = DEMO_USER;
+  } else {
+    const { auth, currentUser } = await import("@clerk/nextjs/server");
+    const result = await auth();
+    userId = result.userId!;
+    const cu = await currentUser();
+    clerkUser = cu ? { fullName: cu.fullName ?? "User", imageUrl: cu.imageUrl ?? null, email: cu.emailAddresses[0]?.emailAddress ?? "" } : null;
+  }
+
+  const dbUser = await db.user.findUnique({ where: { clerkId: userId } });
 
   return (
     <div className="p-8 max-w-2xl">
@@ -19,7 +32,7 @@ export default async function SettingsPage() {
             {clerkUser?.imageUrl && <img src={clerkUser.imageUrl} alt="Avatar" className="w-14 h-14 rounded-full" />}
             <div>
               <p className="font-medium text-gray-900">{clerkUser?.fullName ?? "User"}</p>
-              <p className="text-sm text-gray-500">{clerkUser?.emailAddresses[0]?.emailAddress}</p>
+              <p className="text-sm text-gray-500">{clerkUser?.email}</p>
             </div>
           </div>
         </div>

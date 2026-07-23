@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
@@ -6,7 +5,22 @@ import path from "path";
 import { transcribeAudio, translateSubtitles } from "@/lib/whisper";
 import { toSRT, toVTT } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
+  if (process.env.DEMO_MODE === "true") {
+    return NextResponse.json({
+      id: "demo-job-" + Math.random().toString(36).slice(2, 8),
+      status: "PROCESSING",
+      title: "Demo Transcription",
+      progress: 10,
+      fileName: "demo.mp3",
+      fileSize: 1024000,
+      language: "en",
+    });
+  }
+
+  const { auth } = await import("@clerk/nextjs/server");
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

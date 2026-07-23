@@ -1,8 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { Upload, Subtitles, CheckCircle, Clock, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
+
+const DEMO_USER_ID = "demo-user";
 
 async function getData(clerkId: string) {
   let user = await db.user.findUnique({ where: { clerkId } });
@@ -28,8 +29,17 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
 };
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
-  const { user, jobs, total, done } = await getData(userId!);
+  let userId: string;
+
+  if (process.env.DEMO_MODE === "true") {
+    userId = DEMO_USER_ID;
+  } else {
+    const { auth } = await import("@clerk/nextjs/server");
+    const result = await auth();
+    userId = result.userId!;
+  }
+
+  const { user, jobs, total, done } = await getData(userId);
 
   return (
     <div className="p-8">

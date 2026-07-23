@@ -2,6 +2,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const DemoAvatar = () => (
+  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">D</div>
+);
 import { Subtitles, LayoutDashboard, Upload, History, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +47,7 @@ export function Sidebar({ credits = 0 }: { credits?: number }) {
           <span className="text-xs text-slate-400">Credits</span>
           <span className="text-xs font-bold text-blue-400">{credits} left</span>
         </div>
-        <div className="flex items-center gap-3"><UserButton afterSignOutUrl="/" /><span className="text-sm text-slate-400">Account</span></div>
+        <div className="flex items-center gap-3">{isDemo ? <DemoAvatar /> : <UserButton afterSignOutUrl="/" />}<span className="text-sm text-slate-400">Account</span></div>
       </div>
     </aside>
   );

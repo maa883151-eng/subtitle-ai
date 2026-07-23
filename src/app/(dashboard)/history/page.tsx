@@ -1,9 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { Subtitles } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { format } from "date-fns";
+
+const DEMO_USER_ID = "demo-user";
 
 const statusCls: Record<string, string> = {
   DONE: "bg-green-50 text-green-600",
@@ -13,8 +14,17 @@ const statusCls: Record<string, string> = {
 };
 
 export default async function HistoryPage() {
-  const { userId } = await auth();
-  const user = await db.user.findUnique({ where: { clerkId: userId! } });
+  let userId: string;
+
+  if (process.env.DEMO_MODE === "true") {
+    userId = DEMO_USER_ID;
+  } else {
+    const { auth } = await import("@clerk/nextjs/server");
+    const result = await auth();
+    userId = result.userId!;
+  }
+
+  const user = await db.user.findUnique({ where: { clerkId: userId } });
   const jobs = user ? await db.subtitleJob.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }) : [];
 
   return (

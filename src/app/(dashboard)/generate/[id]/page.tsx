@@ -1,9 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { JobResult } from "@/components/generate/job-result";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+
+const DEMO_USER_ID = "demo-user";
 
 async function getJob(id: string, clerkId: string) {
   const user = await db.user.findUnique({ where: { clerkId } });
@@ -12,8 +13,17 @@ async function getJob(id: string, clerkId: string) {
 }
 
 export default async function JobPage({ params }: { params: { id: string } }) {
-  const { userId } = await auth();
-  const job = await getJob(params.id, userId!);
+  let userId: string;
+
+  if (process.env.DEMO_MODE === "true") {
+    userId = DEMO_USER_ID;
+  } else {
+    const { auth } = await import("@clerk/nextjs/server");
+    const result = await auth();
+    userId = result.userId!;
+  }
+
+  const job = await getJob(params.id, userId);
   if (!job) notFound();
 
   return (
