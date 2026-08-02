@@ -4,8 +4,14 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { transcribeAudio, translateSubtitles } from "@/lib/whisper";
 import { toSRT, toVTT } from "@/lib/utils";
+import { validateUploadFile } from "@/lib/upload-validation";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+// Transcription hits the OpenAI Whisper API and is relatively expensive, so
+// cap how often a single user can kick off a job.
+const TRANSCRIBE_RATE_LIMIT = { windowMs: 60 * 60 * 1000, max: 10 }; // 10 requests/hour
 
 export async function POST(req: Request) {
   if (process.env.DEMO_MODE === "true") {
@@ -24,6 +30,14 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const rateLimit = checkRateLimit(`transcribe:${userId}`, TRANSCRIBE_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many transcription requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rateLimit.retryAfterMs / 1000)) } }
+    );
+  }
+
   let user = await db.user.findUnique({ where: { clerkId: userId } });
   if (!user) user = await db.user.create({ data: { clerkId: userId, email: userId, credits: 5 } });
 
@@ -32,10 +46,16 @@ export async function POST(req: Request) {
   }
 
   const formData = await req.formData();
-  const file = formData.get("file") as File;
+  const file = formData.get("file") as File | null;
   const language = (formData.get("language") as string) || "en";
   const translateTo = formData.get("translateTo") as string | null;
 
+  const validation = validateUploadFile(file);
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: validation.status });
+  }
+  // `validation.valid` being true guarantees `file` is non-null; this check
+  // just satisfies TypeScript's control-flow analysis across the function call.
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
   const title = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
